@@ -1,0 +1,119 @@
+---
+title: "Simple Rcpp tutorial"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Why Rcpp?
+
+R is sometimes slow but very convenient, and C++ is extremely fast, but more painful to work with. And they also come together really well (with Rcpp).
+
+### I feel need. The need for speed.
+
+```{r,cache=TRUE}
+
+#boring, slow function
+bf = function()
+{
+  sum = 0;
+  for(i in 1:1e6)
+  {
+    sum = sum + i
+  }
+}
+
+system.time(bf())
+
+library(Rcpp)
+sourceCpp(code=
+"
+//[[Rcpp::export]]
+double c_bf()
+{
+  double sum = 0;
+  for(long i = 1; i < 1000001; i++)
+  {
+    sum += i;
+  }
+  return sum;
+}
+
+")
+
+system.time(c_bf()) # zero time!
+
+```
+
+## Data structures
+
+
+## Caution!
+
+With Rcpp you can hurt yourself really badly...
+
+You have to know that R do not copy things by unnecessary. It's really good, because it allows to save a lot of memory, and time (copying needs time!). Simple example:
+
+```{r}
+library(pryr)
+
+x = rnorm(1000)
+address(x) # address in memory
+y = x
+address(y) == address(x) # same addres, no copy
+
+y[1] = 1
+address(y) == address(x) # y was copied, just before modification
+```
+
+In general you don't need to think about this in R. But in Rcpp you HAVE TO be really careful, because R interpreter is not working here, and it has no idea, that you want to modify something, and this thing must be copied. So if two R's variables are looking to the same place in memory - there will be a BIG problem. Example:
+
+```{r caution, cache=TRUE}
+library(Rcpp)
+library(pryr)
+
+sourceCpp(code=
+"
+#include<Rcpp.h>
+//[[Rcpp::export]]
+void c_f(Rcpp::NumericVector x)
+{
+  x[0] = 0.0;
+}
+
+")
+
+a = c(1.0,2.0)
+b = a
+address(a) == address(b)
+c_f(b)
+b # Ok. First value is equal to 0
+a # ouch! We didn't want to modify 'a'
+```
+
+#### Rule of thumb
+
+To protect yourself from this you should pass everything from R to c++ by ***const reference***. In that case the compiler will provide protection from modification.
+
+```{r, eval=FALSE}
+library(Rcpp)
+
+# this code won't compile
+# there is const reference
+sourceCpp(code=
+"
+#include<Rcpp.h>
+//[[Rcpp::export]]
+void c_f(const Rcpp::NumericVector& x)
+{
+  x[0] = 0.0; // you cannot modify const object!!!
+}
+
+")
+```
+
+- *const* - this protects from modification.
+- & - this means that variable will be passed by reference (it will not be copied). See https://en.wikipedia.org/wiki/Reference_(C%2B%2B)
+
