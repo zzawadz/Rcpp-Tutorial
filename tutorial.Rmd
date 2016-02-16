@@ -119,3 +119,55 @@ void c_f(const Rcpp::NumericVector& x)
 - *const* - this protects from modification.
 - & - this means that variable will be passed by reference (it will not be copied). See https://en.wikipedia.org/wiki/Reference_(C%2B%2B)
 
+# The STL way
+
+R is different from c++. That truism:) In R one thinks in terms of vectors (mostly), and operations among them. In C++ (and especially in STL - https://en.wikipedia.org/wiki/Standard_Template_Library) one thinks in terms of iterator. Iterators are some small things that are pointing on given position in data structure. They are primarly used to iterate over the data structure, or as a boundaries of the data. Example:
+
+```{r sorting, cache=TRUE}
+# sort only first half of data:
+# R:
+x = c(5.0, 2.0, 6.0, 1.0)
+sort(x[1:(length(x)/2)]) 
+
+# C++ 
+# I will use this not recommended way
+# of passing variables, but it easier to 
+# print data in R:)
+sourceCpp(code=
+"
+#include<Rcpp.h>
+#include<algorithm>
+//[[Rcpp::export]]
+void sort_half(Rcpp::NumericVector x)
+{
+  std::sort(x.begin(), x.begin() + x.size()/2);
+}
+
+")
+sort_half(x)
+x
+
+# sort whole vector in c++
+sourceCpp(code=
+"
+#include<Rcpp.h>
+#include<algorithm>
+//[[Rcpp::export]]
+void sort_c(Rcpp::NumericVector x)
+{
+  std::sort(x.begin(), x.end());
+}
+
+")
+sort_c(x)
+x
+
+```
+
+- **x.begin()** - first element in data structure
+- **x.end()** - one element just after last element (why just after?)
+
+
+
+
+
